@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Cost Manager V9.1 - Menu Input Cepat</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#1f2937}
+header{background:#111827;color:#fff;padding:18px}.wrap{max-width:1200px;margin:auto;padding:16px}
+h1,h2,h3{margin:0 0 10px}.muted{color:#6b7280;font-size:13px}
+button{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:600}
+.primary{background:#2563eb;color:#fff}.success{background:#16a34a;color:#fff}.danger{background:#dc2626;color:#fff}.gray{background:#e5e7eb}
+input,select{width:100%;padding:9px;border:1px solid #d1d5db;border-radius:7px;background:#fff}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px #0000000d}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.toolbar>*{flex:0 0 auto}
+.notice{padding:11px;border-radius:8px;background:#eff6ff;color:#1e40af;font-size:13px;margin-bottom:12px}
+.warn{background:#fff7ed;color:#9a3412}.err{background:#fef2f2;color:#991b1b}.ok{background:#f0fdf4;color:#166534}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.sum{padding:14px;border-radius:10px;background:#f8fafc}.sum b{display:block;font-size:18px;margin-top:5px}
+.hidden{display:none!important}.backup-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.sync-meta{font-size:12px;color:#4b5563;margin-top:8px}.project-item{padding:13px;border:1px solid #e5e7eb;border-radius:9px;margin-bottom:8px;cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:middle}th{background:#f9fafb}
+.tablewrap{overflow:auto}.num{text-align:right;white-space:nowrap}.actions{white-space:nowrap}
+@media(max-width:800px){.grid,.summary{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.grid,.grid2,.summary{grid-template-columns:1fr}.wrap{padding:10px}table{min-width:850px}}
+textarea{font:inherit;resize:vertical}
+.modal-backdrop{position:fixed;inset:0;background:#11182799;display:flex;align-items:center;justify-content:center;padding:14px;z-index:999}
+.modal{background:#fff;border-radius:14px;padding:18px;width:min(620px,100%);max-height:92vh;overflow:auto;box-shadow:0 20px 60px #0003}.modal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:5px}.field.full{grid-column:1/-1}.field label{font-size:13px;font-weight:600}@media(max-width:520px){.modal-grid{grid-template-columns:1fr}.field.full{grid-column:auto}}
+@media print{input,select,textarea{border:0;padding:0;background:transparent}}
+@media print{
+ body{background:#fff}.no-print{display:none!important}.card{box-shadow:none;border:0;padding:0;margin-bottom:18px}
+ table{font-size:11px}th{background:#f3f4f6!important}
+}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>Project Cost Manager V9.1</h1><div>V9.1 • Menu input Material, Upah & BOP di bagian atas • Backup/Pulihkan • Laporan PDF</div></div></header>
+<div class="wrap">
+
+<div id="connection" class="notice warn">Mode lokal. Database online belum dikonfigurasi.</div>
+
+<div class="card no-print">
+<h3>Database Online — Supabase</h3>
+<div class="muted">Masukkan Project URL dan anon/public key. Jangan masukkan service_role key.</div>
+<div class="grid2" style="margin-top:10px">
+<div><label>Supabase Project URL</label><input id="sbUrl" placeholder="https://xxxxx.supabase.co"></div>
+<div><label>Anon / Public Key</label><input id="sbKey" placeholder="eyJ..."></div>
+</div>
+<div class="toolbar" style="margin-top:10px">
+<button class="primary" onclick="saveConfig()">Simpan & Hubungkan</button>
+<button class="gray" onclick="testConnection()">Tes Koneksi</button>
+<button class="gray" onclick="clearConfig()">Hapus Konfigurasi</button>
+</div>
+</div>
+
+<div class="card no-print">
+<div class="toolbar">
+<button class="primary" onclick="addProject()">+ Tambah Proyek</button>
+<input id="projectSearch" style="max-width:300px" placeholder="Cari proyek..." oninput="renderProjects()">
+<button class="gray" onclick="syncNow()">↻ Sinkronisasi</button>
+<button class="gray" onclick="importLocal()">⇧ Import Data Lokal</button><button class="gray" onclick="backupJSON()">⬇ Backup JSON</button><button class="gray" onclick="document.getElementById('restoreFile').click()">↥ Pulihkan JSON</button><input id="restoreFile" class="hidden" type="file" accept=".json,application/json" onchange="restoreJSON(event)">
+</div>
+<div id="syncMeta" class="sync-meta">Data lokal: 0 proyek · Belum ada sinkronisasi.</div></div>
+
+<section id="dashboard"><div class="card"><h2>Daftar Proyek</h2><div id="projects"></div></div></section>
+
+<section id="detail" class="hidden">
+<div class="card no-print"><div class="toolbar" style="justify-content:space-between">
+<button class="gray" onclick="backToDashboard()">← Kembali</button>
+<div class="toolbar">
+<button class="success" onclick="saveProject()">Simpan Proyek</button>
+<button class="gray" onclick="printProject()">Cetak / PDF</button><button class="gray" onclick="exportCSV()">Export RAB CSV</button>
+<button class="danger" onclick="deleteProject()">Hapus Proyek</button>
+</div>
+</div></div>
+
+<div class="card no-print" id="quickCostMenu">
+  <h3>Input Biaya Cepat</h3>
+  <p class="muted" style="margin:0 0 10px">Pilih kategori biaya langsung dari menu atas tanpa perlu menggulir ke bagian bawah.</p>
+  <div class="toolbar">
+    <button class="success" type="button" onclick="addItem('material')">＋ Input Material</button>
+    <button class="success" type="button" onclick="addItem('upah')">＋ Input Upah</button>
+    <button class="success" type="button" onclick="addItem('bop')">＋ Input BOP</button>
+  </div>
+</div>
+
+<div class="card">
+<h2>Informasi Proyek</h2>
+<div class="grid">
+<div><label>Nama Proyek</label><input id="p_name"></div>
+<div><label>Tanggal</label><input id="p_date" type="date"></div>
+<div><label>Status</label><select id="p_status"><option>Draft</option><option>Berjalan</option><option>Selesai</option></select></div>
+<div><label>Perusahaan</label><input id="p_company"></div>
+<div><label>No. Laporan / Proyek</label><input id="p_report"></div>
+<div><label>Klien</label><input id="p_client"></div>
+<div><label>Lokasi Proyek</label><input id="p_location"></div>
+<div><label>Dibuat Oleh</label><input id="p_prepared"></div>
+<div><label>Disetujui Oleh</label><input id="p_approved"></div>
+<div><label>Tanggal Mulai</label><input id="p_start" type="date"></div>
+<div><label>Target Selesai</label><input id="p_end" type="date"></div>
+<div><label>Anggaran / Budget (Rp)</label><input id="p_budget" type="number" min="0" placeholder="0"></div>
+<div><label>Nilai Kontrak / Penjualan (Rp)</label><input id="p_contract" type="number" min="0" placeholder="0"></div>
+<div><label>Progress (%)</label><input id="p_progress" type="number" min="0" max="100" placeholder="0"></div>
+<div style="grid-column:1/-1"><label>Catatan Proyek</label><textarea id="p_notes" rows="3" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:7px" placeholder="Catatan lapangan, kendala, tindak lanjut..."></textarea></div>
+</div></div>
+<div class="summary">
+<div class="sum">Anggaran<b id="s_budget">Rp 0</b></div><div class="sum">Nilai Kontrak<b id="s_contract">Rp 0</b></div><div class="sum">Estimasi Laba<b id="s_profit">Rp 0</b></div><div class="sum">Margin<b id="s_margin">0%</b></div>
+</div>
+<div class="card"><div class="toolbar" style="justify-content:space-between"><b>Progress Proyek</b><b id="progressLabel">0%</b></div><div style="height:12px;background:#e5e7eb;border-radius:99px;overflow:hidden;margin-top:10px"><div id="progressBar" style="height:100%;width:0%;background:#2563eb;border-radius:99px"></div></div><div class="muted" style="margin-top:8px">Isi progress secara manual sesuai kondisi pekerjaan di lapangan.</div></div>
+
+<div class="card no-print"><label>Filter Material / Upah / BOP</label>
+<input id="globalFilter" placeholder="Cari tanggal, nama, jenis, satuan..." oninput="renderItems()"></div>
+
+<div class="summary">
+<div class="sum">Material<b id="s_material">Rp 0</b></div>
+<div class="sum">Upah<b id="s_upah">Rp 0</b></div>
+<div class="sum">BOP<b id="s_bop">Rp 0</b></div>
+<div class="sum">Total HPP<b id="s_total">Rp 0</b></div>
+</div>
+<div class="card no-print" id="reportControls"><h3>Laporan & Rekap</h3><div class="grid2" style="margin-top:10px"><div class="field"><label for="r_from">Dari tanggal</label><input id="r_from" type="date" onchange="renderItems()"></div><div class="field"><label for="r_to">Sampai tanggal</label><input id="r_to" type="date" onchange="renderItems()"></div></div><div class="toolbar" style="margin-top:10px"><button class="primary" onclick="exportReportCSV()">Ekspor Laporan CSV</button><button class="gray" onclick="printReport()">Cetak Laporan / PDF</button><button class="gray" onclick="clearReportFilters()">Hapus Filter Tanggal</button></div><p class="muted">Filter tanggal memengaruhi tabel biaya dan rekap biaya. Nilai kontrak dan anggaran tetap mengikuti data proyek.</p></div>
+<div class="card" id="reportSummary"><h3>Ringkasan Laporan</h3><div class="summary" style="margin-top:10px"><div class="sum">Jumlah Item<b id="r_count">0</b></div><div class="sum">Biaya Terbesar<b id="r_largest">—</b></div><div class="sum">Budget Tersisa<b id="r_remaining">Rp 0</b></div><div class="sum">Realisasi Budget<b id="r_realization">0%</b></div></div><div id="r_breakdown" class="muted" style="margin-top:12px"></div></div>
+<div id="sections"></div>
+</section>
+</div>
+<div id="itemModal" class="modal-backdrop hidden no-print" role="dialog" aria-modal="true" aria-labelledby="itemModalTitle" onclick="if(event.target===this)closeItemModal()">
+ <div class="modal"><div class="toolbar" style="justify-content:space-between"><h2 id="itemModalTitle">Tambah Item Biaya</h2><button class="gray" type="button" onclick="closeItemModal()">Tutup</button></div>
+ <form id="itemForm" onsubmit="submitItemForm(event)"><input id="i_id" type="hidden"><input id="i_category" type="hidden">
+  <div class="modal-grid" style="margin-top:14px">
+   <div class="field"><label for="i_date">Tanggal</label><input id="i_date" type="date" required></div>
+   <div class="field"><label for="i_category_label">Kategori</label><input id="i_category_label" disabled></div>
+   <div class="field full"><label for="i_name">Nama biaya / barang</label><input id="i_name" required maxlength="160" placeholder="Contoh: Semen Portland"></div>
+   <div class="field"><label for="i_type">Jenis / spesifikasi</label><input id="i_type" maxlength="120" placeholder="Contoh: 50 kg"></div>
+   <div class="field"><label for="i_qty">Kuantitas</label><input id="i_qty" type="number" min="0.0001" step="any" required value="1"></div>
+   <div class="field"><label for="i_unit">Satuan</label><select id="i_unit"><option>pcs</option><option>unit</option><option>m</option><option>m²</option><option>m³</option><option>kg</option><option>ton</option><option>sak</option><option>hari</option><option>jam</option><option>ls</option></select></div>
+   <div class="field"><label for="i_price">Harga satuan (Rp)</label><input id="i_price" type="number" min="0" step="1" required value="0"></div>
+   <div class="field full sum">Total item<b id="i_total_preview">Rp 0</b></div>
+  </div>
+  <div class="toolbar" style="justify-content:flex-end;margin-top:14px"><button type="button" class="gray" onclick="closeItemModal()">Batal</button><button type="submit" class="primary">Simpan Item</button></div>
+ </form></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const CFGKEY='pcm_v4_config', LOCALKEY='pcm_v3_data';
+let cfg=JSON.parse(localStorage.getItem(CFGKEY)||'null'), db=null, online=false, projects=[], currentId=null, lastSyncAt=null;
+const cats=[{key:'material',label:'Material'},{key:'upah',label:'Upah'},{key:'bop',label:'BOP'}];
+
+function uid(){return crypto.randomUUID?crypto.randomUUID():'id_'+Date.now()+'_'+Math.random().toString(36).slice(2)}
+function rupiah(n){return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function status(msg,cls='warn'){const e=document.getElementById('connection');e.className='notice '+cls;e.textContent=msg}
+function localData(){try{return JSON.parse(localStorage.getItem(LOCALKEY)||'{"projects":[]}')}catch(e){return {projects:[]}}}
+function saveLocal(){try{localStorage.setItem(LOCALKEY,JSON.stringify({projects}));updateSyncMeta();return true}catch(e){status('Gagal menyimpan lokal. Penyimpanan perangkat mungkin penuh: '+e.message,'err');return false}}
+function updateSyncMeta(){const el=document.getElementById('syncMeta');if(el)el.textContent='Data lokal: '+projects.length+' proyek · '+projects.reduce((n,p)=>n+(p.items||[]).length,0)+' item biaya · '+(lastSyncAt?'Sinkron terakhir: '+new Date(lastSyncAt).toLocaleString('id-ID'):'Belum ada sinkronisasi berhasil.')}
+function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+function backupJSON(){const payload={app:'Cosh Manager',version:'9.1',exportedAt:new Date().toISOString(),projects};downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),'cosh-manager-backup-'+new Date().toISOString().slice(0,10)+'.json');status('Backup JSON dibuat. Simpan file di tempat aman.','ok')}
+async function restoreJSON(event){const file=event.target.files&&event.target.files[0];event.target.value='';if(!file)return;try{const raw=JSON.parse(await file.text());const incoming=Array.isArray(raw)?raw:raw.projects;if(!Array.isArray(incoming))throw new Error('Format tidak dikenali: file harus berisi daftar projects.');if(!confirm('Pulihkan '+incoming.length+' proyek dari file backup? Data lokal dengan ID sama akan diganti. Data online tidak otomatis diubah.'))return;const map=new Map(projects.map(p=>[p.id,norm(p)]));incoming.forEach(p0=>{const p=norm(p0);map.set(p.id,p)});projects=Array.from(map.values());if(!saveLocal())return;renderProjects();if(currentId&&projects.some(p=>p.id===currentId))openProject(currentId);else backToDashboard();status('Pemulihan selesai. Periksa data lalu tekan Sinkronisasi/Import jika ingin mengirim ke database online.','ok')}catch(e){alert('Gagal memulihkan backup: '+e.message)}}
+function norm(p){return Object.assign({id:uid(),name:'',date:new Date().toISOString().slice(0,10),status:'Draft',company:'',report:'',client:'',location:'',prepared:'',approved:'',photo:'',budget:0,contractValue:0,startDate:'',endDate:'',progress:0,notes:'',items:[]},p,{items:Array.isArray(p.items)?p.items:[]})}
+
+function saveConfig(){
+ const url=document.getElementById('sbUrl').value.trim().replace(/\/$/,'');
+ const key=document.getElementById('sbKey').value.trim();
+ if(!url||!key)return alert('Isi Supabase URL dan anon/public key.');
+ cfg={url,key};localStorage.setItem(CFGKEY,JSON.stringify(cfg));connect();
+}
+function clearConfig(){localStorage.removeItem(CFGKEY);cfg=null;db=null;online=false;status('Konfigurasi dihapus. Mode lokal.','warn')}
+async function connect(){
+ if(!cfg)return;
+ try{
+  db=window.supabase.createClient(cfg.url,cfg.key);
+  const {error}=await db.from('projects').select('id').limit(1);
+  if(error)throw error;
+  online=true;status('● ONLINE — Database terhubung.','ok');await syncNow();
+ }catch(e){online=false;status('Koneksi database gagal: '+e.message,'err')}
+}
+async function testConnection(){if(!cfg)return alert('Isi konfigurasi Supabase terlebih dahulu.');await connect()}
+
+async function syncNow(){
+ if(!online||!db){renderProjects();return}
+ try{
+  const {data:ps,error:pe}=await db.from('projects').select('*').order('created_at',{ascending:false});
+  if(pe)throw pe;
+  const {data:it,error:ie}=await db.from('cost_items').select('*');
+  if(ie)throw ie;
+  const remote=(ps||[]).map(p=>norm({...p,startDate:p.start_date||p.startDate||'',endDate:p.end_date||p.endDate||'',budget:Number(p.budget)||0,contractValue:Number(p.contract_value??p.contractValue)||0,progress:Number(p.progress)||0,notes:p.notes||'',items:(it||[]).filter(x=>x.project_id===p.id).map(x=>({
+   id:x.id,date:x.item_date||'',name:x.name||'',type:x.kind||'',qty:Number(x.qty)||0,unit:x.unit||'',price:Number(x.unit_price)||0,category:x.category
+  }))}));
+  // Keep local-only projects rather than silently discarding them during first connection.
+  const remoteIds=new Set(remote.map(p=>p.id));const localOnly=projects.filter(p=>!remoteIds.has(p.id));
+  projects=[...remote,...localOnly];
+  saveLocal();renderProjects();if(currentId&&projects.some(p=>p.id===currentId))openProject(currentId);
+  lastSyncAt=new Date().toISOString();updateSyncMeta();status('● ONLINE — Sinkronisasi berhasil. Proyek lokal yang belum online tetap dipertahankan.','ok');
+ }catch(e){status('Sinkronisasi gagal: '+e.message,'err')}
+}
+
+function renderProjects(){
+ const q=(document.getElementById('projectSearch').value||'').toLowerCase();
+ const list=projects.filter(p=>(p.name+' '+p.client+' '+p.location).toLowerCase().includes(q));
+ document.getElementById('projects').innerHTML=list.length?list.map(p=>'<div class="project-item" onclick="openProject(\''+p.id+'\')"><b>'+esc(p.name||'Tanpa Nama')+'</b><div class="muted">'+esc(p.date)+' · '+esc(p.status)+' · '+esc(p.client)+'</div></div>').join(''):'<div class="muted">Belum ada proyek.</div>';
+}
+function addProject(){const p=norm({id:uid(),name:'Proyek Baru'});projects.unshift(p);saveLocal();openProject(p.id)}
+function current(){return projects.find(p=>p.id===currentId)}
+function openProject(id){
+ currentId=id;const p=current();if(!p)return;
+ document.getElementById('dashboard').classList.add('hidden');document.getElementById('detail').classList.remove('hidden');
+ [['p_name','name'],['p_date','date'],['p_status','status'],['p_company','company'],['p_report','report'],['p_client','client'],['p_location','location'],['p_prepared','prepared'],['p_approved','approved'],['p_start','startDate'],['p_end','endDate'],['p_budget','budget'],['p_contract','contractValue'],['p_progress','progress'],['p_notes','notes']].forEach(([a,b])=>document.getElementById(a).value=p[b]||'');
+ renderItems();
+}
+function collectProject(){
+ const p=current();if(!p)return;
+ [['p_name','name'],['p_date','date'],['p_status','status'],['p_company','company'],['p_report','report'],['p_client','client'],['p_location','location'],['p_prepared','prepared'],['p_approved','approved'],['p_start','startDate'],['p_end','endDate'],['p_budget','budget'],['p_contract','contractValue'],['p_progress','progress'],['p_notes','notes']].forEach(([a,b])=>p[b]=document.getElementById(a).value);
+ return p;
+}
+async function saveProject(){
+ const p=collectProject();saveLocal();
+ if(online){
+  try{
+   const {error}=await db.from('projects').upsert({id:p.id,name:p.name,date:p.date,status:p.status,company:p.company,report:p.report,client:p.client,location:p.location,prepared:p.prepared,approved:p.approved,photo:p.photo||'',start_date:p.startDate||null,end_date:p.endDate||null,budget:Number(p.budget)||0,contract_value:Number(p.contractValue)||0,progress:Number(p.progress)||0,notes:p.notes||''});
+   if(error)throw error;
+   const {data:remoteItems,error:re}=await db.from('cost_items').select('id').eq('project_id',p.id);if(re)throw re;
+   const localIds=new Set(p.items.map(i=>i.id));const stale=(remoteItems||[]).filter(x=>!localIds.has(x.id)).map(x=>x.id);
+   if(stale.length){const {error:de}=await db.from('cost_items').delete().in('id',stale);if(de)throw de}
+   for(const i of p.items){const {error:e}=await db.from('cost_items').upsert({id:i.id,project_id:p.id,item_date:i.date,name:i.name,kind:i.type,qty:Number(i.qty)||0,unit:i.unit,unit_price:Number(i.price)||0,category:i.category});if(e)throw e;}
+   status('● ONLINE — Proyek, detail, dan biaya tersimpan.','ok');
+  }catch(e){status('Gagal menyimpan online: '+e.message,'err')}
+ }else status('Tersimpan di perangkat. Hubungkan database untuk sinkronisasi online.','warn');
+ renderProjects();
+}
+async function deleteProject(){
+ const p=current();if(!p||!confirm('Hapus proyek ini beserta semua biaya?'))return;
+ if(online){
+  try{
+   const {error:e1}=await db.from('cost_items').delete().eq('project_id',p.id);if(e1)throw e1;
+   const {error}=await db.from('projects').delete().eq('id',p.id);if(error)throw error;
+  }catch(e){return alert('Gagal menghapus online: '+e.message)}
+ }
+ projects=projects.filter(x=>x.id!==p.id);saveLocal();backToDashboard();
+}
+function backToDashboard(){currentId=null;document.getElementById('detail').classList.add('hidden');document.getElementById('dashboard').classList.remove('hidden');renderProjects()}
+function filteredItems(p){
+ const q=(document.getElementById('globalFilter').value||'').toLowerCase();
+ const from=document.getElementById('r_from')?.value||'',to=document.getElementById('r_to')?.value||'';return p.items.filter(i=>(!q||(i.date+' '+i.name+' '+i.type+' '+i.unit+' '+i.category).toLowerCase().includes(q))&&(!from||i.date>=from)&&(!to||i.date<=to));
+}
+function totalCat(p,cat){return filteredItems(p).filter(i=>i.category===cat).reduce((s,i)=>s+(Number(i.qty)||0)*(Number(i.price)||0),0)}
+function renderItems(){
+ const p=current();if(!p)return;let html='';
+ cats.forEach(c=>{
+  const arr=filteredItems(p).filter(i=>i.category===c.key);
+  html+='<div class="card"><div class="toolbar" style="justify-content:space-between"><h3>'+c.label+'</h3><button class="success no-print" onclick="addItem(\''+c.key+'\')">+ Tambah '+c.label+'</button></div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Jenis</th><th>Qty</th><th>Satuan</th><th>Harga Satuan</th><th>Total</th><th class="no-print">Aksi</th></tr></thead><tbody>';
+  html+=arr.length?arr.map(i=>'<tr><td>'+esc(i.date)+'</td><td>'+esc(i.name)+'</td><td>'+esc(i.type)+'</td><td class="num">'+i.qty+'</td><td>'+esc(i.unit)+'</td><td class="num">'+rupiah(i.price)+'</td><td class="num"><b>'+rupiah((Number(i.qty)||0)*(Number(i.price)||0))+'</b></td><td class="actions no-print"><button class="gray" onclick="editItem(\''+i.id+'\')">Edit</button> <button class="danger" onclick="deleteItem(\''+i.id+'\')">Hapus</button></td></tr>').join(''):'<tr><td colspan="8" class="muted">Belum ada data / tidak sesuai filter.</td></tr>';
+  html+='</tbody></table></div></div>';
+ });
+ document.getElementById('sections').innerHTML=html;
+ const m=totalCat(p,'material'),u=totalCat(p,'upah'),b=totalCat(p,'bop');
+ document.getElementById('s_material').textContent=rupiah(m);document.getElementById('s_upah').textContent=rupiah(u);document.getElementById('s_bop').textContent=rupiah(b);document.getElementById('s_total').textContent=rupiah(m+u+b);
+ const budget=Number(p.budget)||0, contract=Number(p.contractValue)||0, profit=contract-(m+u+b), margin=contract>0?(profit/contract*100):0;
+ document.getElementById('s_budget').textContent=rupiah(budget);document.getElementById('s_contract').textContent=rupiah(contract);document.getElementById('s_profit').textContent=rupiah(profit);document.getElementById('s_margin').textContent=margin.toFixed(1)+'%';
+ const prog=Math.max(0,Math.min(100,Number(p.progress)||0));document.getElementById('progressLabel').textContent=prog+'%';document.getElementById('progressBar').style.width=prog+'%';document.getElementById('progressBar').style.background=prog>=100?'#16a34a':'#2563eb';
+ const items=filteredItems(p),total=m+u+b,largest=items.reduce((best,i)=>((Number(i.qty)||0)*(Number(i.price)||0)>(best?.total||0)?{name:i.name,total:(Number(i.qty)||0)*(Number(i.price)||0)}:best),null);document.getElementById('r_count').textContent=String(items.length);document.getElementById('r_largest').textContent=largest?((largest.name||'Item')+' · '+rupiah(largest.total)):'—';document.getElementById('r_remaining').textContent=rupiah(budget-total);document.getElementById('r_realization').textContent=budget>0?(total/budget*100).toFixed(1)+'%':'—';document.getElementById('r_breakdown').textContent='Material '+rupiah(m)+' · Upah '+rupiah(u)+' · BOP '+rupiah(b)+' · Total biaya '+rupiah(total)+' · Estimasi laba '+rupiah(profit);
+}
+function addItem(cat){
+ const p=current();if(!p)return;
+ document.getElementById('itemForm').reset();document.getElementById('i_id').value='';document.getElementById('i_category').value=cat;
+ document.getElementById('i_category_label').value=(cats.find(c=>c.key===cat)||{}).label||cat;
+ document.getElementById('i_date').value=new Date().toISOString().slice(0,10);document.getElementById('i_qty').value='1';document.getElementById('i_price').value='0';
+ document.getElementById('itemModalTitle').textContent='Tambah '+((cats.find(c=>c.key===cat)||{}).label||'Item');updateItemPreview();document.getElementById('itemModal').classList.remove('hidden');document.getElementById('i_name').focus();
+}
+function closeItemModal(){document.getElementById('itemModal').classList.add('hidden')}
+function updateItemPreview(){const q=Number(document.getElementById('i_qty').value)||0,price=Number(document.getElementById('i_price').value)||0;document.getElementById('i_total_preview').textContent=rupiah(q*price)}
+['i_qty','i_price'].forEach(id=>document.addEventListener('input',e=>{if(e.target&&e.target.id===id)updateItemPreview()}));
+function editItem(id){
+ const p=current(),i=p&&p.items.find(x=>x.id===id);if(!i)return;
+ document.getElementById('itemForm').reset();document.getElementById('i_id').value=i.id;document.getElementById('i_category').value=i.category;
+ document.getElementById('i_category_label').value=(cats.find(c=>c.key===i.category)||{}).label||i.category;
+ document.getElementById('i_date').value=i.date||new Date().toISOString().slice(0,10);document.getElementById('i_name').value=i.name||'';document.getElementById('i_type').value=i.type||'';document.getElementById('i_qty').value=Number(i.qty)||1;document.getElementById('i_unit').value=i.unit||'pcs';document.getElementById('i_price').value=Number(i.price)||0;
+ document.getElementById('itemModalTitle').textContent='Edit Item Biaya';updateItemPreview();document.getElementById('itemModal').classList.remove('hidden');
+}
+async function submitItemForm(event){
+ event.preventDefault();const p=current();if(!p)return;
+ const id=document.getElementById('i_id').value||uid(),old=p.items.find(x=>x.id===id);
+ const item={id,category:document.getElementById('i_category').value,date:document.getElementById('i_date').value,name:document.getElementById('i_name').value.trim(),type:document.getElementById('i_type').value.trim(),qty:Number(document.getElementById('i_qty').value),unit:document.getElementById('i_unit').value,price:Number(document.getElementById('i_price').value)};
+ if(!item.name||!item.date||!Number.isFinite(item.qty)||item.qty<=0||!Number.isFinite(item.price)||item.price<0){alert('Periksa kembali nama, tanggal, kuantitas, dan harga satuan.');return}
+ if(old)Object.assign(old,item);else p.items.push(item);
+ saveLocal();closeItemModal();renderItems();await saveItemOnline(item,p);
+}
+async function saveItemOnline(i,p){
+ if(!online||!db)return;
+ try{const {error}=await db.from('cost_items').upsert({id:i.id,project_id:p.id,item_date:i.date,name:i.name,kind:i.type,qty:Number(i.qty)||0,unit:i.unit,unit_price:Number(i.price)||0,category:i.category});if(error)throw error;status('● ONLINE — Item biaya tersinkron.','ok')}
+ catch(e){status('Item tersimpan lokal; sinkronisasi gagal: '+e.message,'err')}
+}
+async function deleteItem(id){
+ if(!confirm('Hapus item ini?'))return;const p=current();
+ if(online){const {error}=await db.from('cost_items').delete().eq('id',id);if(error)return alert(error.message)}
+ p.items=p.items.filter(i=>i.id!==id);saveLocal();renderItems();
+}
+async function importLocal(){
+ if(!online)return alert('Hubungkan database online terlebih dahulu.');
+ const d=localData();if(!d.projects?.length)return alert('Tidak ada data lokal.');
+ if(!confirm('Kirim semua data lokal ke database online?'))return;
+ for(const p0 of d.projects){
+  const p=norm(p0);
+  let r=await db.from('projects').upsert({id:p.id,name:p.name,date:p.date,status:p.status,company:p.company,report:p.report,client:p.client,location:p.location,prepared:p.prepared,approved:p.approved,photo:p.photo||'',start_date:p.startDate||null,end_date:p.endDate||null,budget:Number(p.budget)||0,contract_value:Number(p.contractValue)||0,progress:Number(p.progress)||0,notes:p.notes||''});
+  if(r.error)return alert(r.error.message);
+  for(const i of p.items){
+   r=await db.from('cost_items').upsert({id:i.id,project_id:p.id,item_date:i.date,name:i.name,kind:i.type,qty:Number(i.qty)||0,unit:i.unit,unit_price:Number(i.price)||0,category:i.category});
+   if(r.error)return alert(r.error.message);
+  }
+ }
+ await syncNow();alert('Data lokal berhasil dikirim ke database online.');
+}
+function exportCSV(){
+ const p=collectProject();if(!p)return;const rows=[['Tanggal','Kategori','Nama Biaya','Jenis','Qty','Satuan','Harga Satuan','Total']];
+ p.items.forEach(i=>rows.push([i.date,i.category,i.name,i.type,i.qty,i.unit,i.price,(Number(i.qty)||0)*(Number(i.price)||0)]));
+ const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+ const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(p.name||'RAB-proyek').replace(/[^a-z0-9-_]/gi,'_')+'.csv';a.click();URL.revokeObjectURL(a.href);
+}
+function clearReportFilters(){document.getElementById('r_from').value='';document.getElementById('r_to').value='';renderItems()}
+function exportReportCSV(){
+ const p=collectProject();if(!p)return;const items=filteredItems(p),m=items.filter(i=>i.category==='material').reduce((s,i)=>s+i.qty*i.price,0),u=items.filter(i=>i.category==='upah').reduce((s,i)=>s+i.qty*i.price,0),b=items.filter(i=>i.category==='bop').reduce((s,i)=>s+i.qty*i.price,0),cost=m+u+b,contract=Number(p.contractValue)||0;
+ const rows=[['LAPORAN PROYEK',p.name],['Klien',p.client],['Lokasi',p.location],['Tanggal proyek',p.date],['Status',p.status],['Anggaran',Number(p.budget)||0],['Nilai kontrak',contract],['Material',m],['Upah',u],['BOP',b],['Total biaya',cost],['Estimasi laba',contract-cost],['Margin %',contract?((contract-cost)/contract*100).toFixed(2):0],[],['Tanggal','Kategori','Nama Biaya','Jenis','Qty','Satuan','Harga Satuan','Total']];
+ items.forEach(i=>rows.push([i.date,i.category,i.name,i.type,i.qty,i.unit,i.price,(Number(i.qty)||0)*(Number(i.price)||0)]));const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=((p.name||'laporan-proyek').replace(/[^a-z0-9-_]/gi,'_'))+'-laporan.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function printReport(){collectProject();document.title=((current()?.name||'Cosh-Manager')+'-Laporan').replace(/[^a-z0-9-_]/gi,'_');window.print()}
+function printProject(){collectProject();document.title=((current()?.name||'Cosh-Manager')+'-RAB').replace(/[^a-z0-9-_]/gi,'_');window.print()}
+window.addEventListener('afterprint',()=>{document.title='Project Cost Manager V9.1'});
+
+if(cfg){document.getElementById('sbUrl').value=cfg.url;document.getElementById('sbKey').value=cfg.key}
+projects=localData().projects.map(norm);renderProjects();updateSyncMeta();
+if(cfg)connect();
+</script>
+</body>
+</html>
